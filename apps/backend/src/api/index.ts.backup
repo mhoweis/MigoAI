@@ -1,0 +1,81 @@
+// src/api/index.ts - CORRECTED VERSION
+import { Router } from "express";
+import {
+  authenticate,
+  requireAdmin,
+  requireOrganizer,
+} from "../middlewares/auth.middleware";
+
+// Import route modules
+import authRoutes from "./auth/routes";
+import userRoutes from "./users/routes";
+import eventRoutes from "./events/routes";
+import bookingRoutes from "./bookings/routes";
+import chatRoutes from "./chat/routes";
+import paymentRoutes from "./payments/routes";
+import notificationRoutes from "./notifications/routes";
+import reviewRoutes from "./reviews/routes";
+import organizerRoutes from "./organizers/routes";
+import adminRoutes from "./admin/routes";
+import aiRoutes from "./ai/routes";
+import searchRoutes from "./search/routes";
+import uploadRoutes from "./upload/routes";
+import healthRoutes from "./health/routes";
+
+const router = Router();
+
+// ========== HEALTH & STATUS ==========
+router.use("/health", healthRoutes);
+
+// ========== PUBLIC ROUTES ==========
+router.use("/auth", authRoutes);
+router.use("/events", eventRoutes); // Event routes handle auth internally per route
+router.use("/search", searchRoutes); // Assuming searchRoutes handles auth internally
+
+// API Documentation
+router.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "MIGO API v1.0.0",
+    version: "1.0.0",
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      auth: "/api/auth",
+      users: "/api/users",
+      events: "/api/events",
+      bookings: "/api/bookings",
+      chat: "/api/chat",
+      payments: "/api/payments",
+      health: "/api/health",
+    },
+  });
+});
+
+// ========== PROTECTED ROUTES ==========
+// All routes below require authentication
+router.use(authenticate);
+
+router.use("/users", userRoutes);
+router.use("/bookings", bookingRoutes);
+router.use("/chat", chatRoutes);
+router.use("/payments", paymentRoutes);
+router.use("/notifications", notificationRoutes);
+router.use("/reviews", reviewRoutes); // Assuming reviews need auth
+router.use("/organizer", requireOrganizer, organizerRoutes);
+router.use("/ai", aiRoutes);
+router.use("/upload", uploadRoutes);
+
+// ========== ADMIN ROUTES ==========
+router.use("/admin", requireAdmin, adminRoutes);
+
+// ========== 404 HANDLER ==========
+router.use("*", (req, res) => {
+  res.status(404).json({
+    success: false,
+    error: "EndpointNotFound",
+    message: `API endpoint ${req.method} ${req.originalUrl} not found`,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+export default router;
