@@ -1,0 +1,28 @@
+{
+  "name": "@migo/shared",
+  "version": "1.0.0",
+  "description": "Shared types, schemas, constants, and utilities for MIGO platform",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "migo",
+    "shared",
+    "types",
+    "schemas",
+    "validation"
+  ],
+  "author": "MIGO TEAM",
+  "license": "ISC",
+  "dependencies": {
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3"
+  }
+}
