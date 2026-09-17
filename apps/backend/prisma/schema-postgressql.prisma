@@ -1,0 +1,100 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String?  @unique
+  phone       String?  @unique
+  name        String?
+  avatar      String?
+  preferences Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Social logins
+  authProvider String?
+  providerId   String?
+
+  // Passkey
+  passkeyId        String? @unique
+  passkeyPublicKey String?
+
+  // Relations
+  bookings        Booking[]
+  reviews         Review[]
+  wishlists       Wishlist[]
+  organizedEvents Event[]
+}
+
+model Event {
+  id             String   @id @default(cuid())
+  title          String
+  description    String
+  category       String
+  date           DateTime
+  location       Json // { lat, lng, address, city, country }
+  priceRange     Json // { min, max, currency }
+  images         String[] // URLs
+  facilities     String[]
+  ageRestriction Int?
+  dressCode      String?
+  organizerId    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // External ID (e.g., from Ticketmaster)
+  externalId     String? @unique
+  externalSource String? // e.g., "ticketmaster"
+
+  // Relations
+  organizer User       @relation(fields: [organizerId], references: [id])
+  bookings  Booking[]
+  reviews   Review[]
+  wishlists Wishlist[]
+}
+
+model Booking {
+  id          String   @id @default(cuid())
+  userId      String
+  eventId     String
+  ticketCount Int
+  totalAmount Float
+  status      String // pending, confirmed, cancelled
+  bookingDate DateTime @default(now())
+  ticketUrl   String? // URL to external ticket
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  eventId   String
+  rating    Int // 1-5
+  comment   String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
+}
+
+model Wishlist {
+  id        String   @id @default(cuid())
+  userId    String
+  eventId   String
+  createdAt DateTime @default(now())
+
+  // Relations
+  user  User  @relation(fields: [userId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
+}

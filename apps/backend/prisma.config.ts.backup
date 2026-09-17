@@ -1,0 +1,15 @@
+// prisma.config.ts (at your project root)
+import 'dotenv/config'; // Explicitly loads environment variables
+import { defineConfig, env } from 'prisma/config';
+
+export default defineConfig({
+  schema: 'prisma/schema.prisma', // Path to your schema
+  migrations: {
+    path: 'prisma/migrations',    // Your migrations folder
+    // Optional: Add your seed command if you have one
+    // seed: 'tsx prisma/seed.ts',
+  },
+  datasource: {
+    url: env('DATABASE_URL'),
+  },
+});

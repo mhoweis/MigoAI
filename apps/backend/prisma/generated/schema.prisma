@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum UserRole {
+  USER
+  ADMIN
+  ORGANIZER
+}
+
+// Models
+model User {
+  id                        String        @id @default(cuid())
+  email                     String?       @unique @db.VarChar(255)
+  phone                     String?       @unique @db.VarChar(20)
+  password                  String?       @db.VarChar(255)
+  name                      String?       @db.VarChar(255)
+  avatar                    String?       @db.Text
+  role                      UserRole      @default(USER)
+  emailVerified             Boolean       @default(false)
+  phoneVerified             Boolean       @default(false)
+  interests                Json?         @db.Json 
+  
+  // Phone verification
+  phoneVerificationCode     String?       @db.VarChar(10)
+  phoneVerificationExpires  DateTime?
+  
+  // Social auth
+  firebaseUid               String?       @unique @db.VarChar(255)
+  authMethod                String?       @db.VarChar(50)
+  googleId                  String?       @unique @db.VarChar(255)
+  appleId                   String?       @unique @db.VarChar(255)
+  facebookId                String?       @unique @db.VarChar(255)
+  
+  // Preferences
+  preferences               Json?         @db.Json
+  
+  // Relations
+  passkeys                  Passkey[]
+  passkeyChallenges         PasskeyChallenge[]
+  refreshTokens             RefreshToken[]
+  organizedEvents           Event[]       @relation("Organizer")
+  bookings                  Booking[]
+  reviews                   Review[]
+  wishlists                 Wishlist[]
+  
+  // Timestamps
+  createdAt                 DateTime      @default(now()) @map("created_at")
+  updatedAt                 DateTime      @updatedAt @map("updated_at")
+  lastLoginAt               DateTime?
+  lastActiveAt              DateTime?
+
+  @@map("users")
+  @@index([email])
+  @@index([phone])
+  @@index([role])
+  @@index([createdAt])
+}
+
+model Event {
+  id                String     @id @default(cuid())
+  title             String     @db.VarChar(255)
+  description       String     @db.Text
+  category          String     @db.VarChar(100)
+  date              DateTime   @db.DateTime(0)
+  location          Json       @db.Json
+  priceRange        Json       @db.Json
+  images            Json       @db.Json
+  facilities        Json       @db.Json
+  ageRestriction    Int?       @map("age_restriction")
+  dressCode         String?    @map("dress_code") @db.VarChar(100)
+  organizerId       String     @map("organizer_id")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+  externalId        String?    @unique @map("external_id") @db.VarChar(255)
+  externalSource    String?    @map("external_source") @db.VarChar(50)
+
+  // Relations
+  organizer         User       @relation("Organizer", fields: [organizerId], references: [id])
+  bookings          Booking[]
+  reviews           Review[]
+  wishlists         Wishlist[]
+
+  @@map("events")
+}
+
+model Booking {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  eventId         String    @map("event_id")
+  ticketCount     Int       @default(1) @map("ticket_count")
+  totalAmount     Float     @map("total_amount")
+  status          String    @default("pending") @db.VarChar(20)
+  bookingDate     DateTime  @default(now()) @map("booking_date")
+  ticketUrl       String?   @map("ticket_url") @db.Text
+
+  // Relations
+  user            User      @relation(fields: [userId], references: [id])
+  event           Event     @relation(fields: [eventId], references: [id])
+
+  @@map("bookings")
+}
+
+model Review {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  eventId         String    @map("event_id")
+  rating          Int       @default(5)
+  comment         String?   @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  user            User      @relation(fields: [userId], references: [id])
+  event           Event     @relation(fields: [eventId], references: [id])
+
+  @@unique([userId, eventId])
+  @@map("reviews")
+}
+
+model Wishlist {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  eventId         String    @map("event_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  user            User      @relation(fields: [userId], references: [id])
+  event           Event     @relation(fields: [eventId], references: [id])
+
+  @@unique([userId, eventId])
+  @@map("wishlists")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id])
+  
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model Passkey {
+  id            String   @id @default(cuid())
+  userId        String
+  credentialID  String   @unique
+  publicKey     Bytes
+  counter       BigInt
+  deviceType    String?   @db.VarChar(50)
+  backedUp      Boolean  @default(false)
+  transports    Json?     @db.Json  // Store as JSON array
+  
+  // Relations
+  user          User     @relation(fields: [userId], references: [id])
+  
+  lastUsedAt    DateTime?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([credentialID])
+  @@map("passkeys")
+}
+
+model PasskeyChallenge {
+  id        String   @id @default(cuid())
+  userId    String
+  challenge String
+  type      String   @db.VarChar(20) // 'registration' or 'authentication'
+  expiresAt DateTime
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id])
+  
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([type])
+  @@index([expiresAt])
+  @@map("passkey_challenges")
+}
