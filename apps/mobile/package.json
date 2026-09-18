@@ -7,12 +7,14 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "web:replit": "expo start --web --port 5000",
     "build:android": "eas build --platform android",
     "build:ios": "eas build --platform ios",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@expo/metro-runtime": "~6.1.2",
     "@hookform/resolvers": "^5.2.2",
     "@migo/shared": "*",
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -27,6 +29,7 @@
     "expo-notifications": "~0.32.16",
     "expo-status-bar": "~3.0.9",
     "react": "19.1.0",
+    "react-dom": "19.1.0",
     "react-hook-form": "^7.71.1",
     "react-native": "0.81.5",
     "react-native-elements": "^3.4.3",
@@ -36,6 +39,7 @@
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
+    "react-native-web": "~0.21.0",
     "zustand": "^5.0.10"
   },
   "devDependencies": {

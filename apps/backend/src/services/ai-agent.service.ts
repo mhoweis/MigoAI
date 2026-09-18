@@ -163,7 +163,7 @@ class OllamaProvider implements AIProvider {
         throw new Error(`Ollama API error: ${response.statusText}`);
       }
       
-      const data = await response.json();
+      const data = await response.json() as { response?: string };
       
       try {
         // Try to parse as JSON first
@@ -225,7 +225,7 @@ class OllamaProvider implements AIProvider {
         throw new Error(`Ollama API error: ${response.statusText}`);
       }
       
-      const data = await response.json();
+      const data = await response.json() as { response?: string };
       
       try {
         return JSON.parse(data.response);

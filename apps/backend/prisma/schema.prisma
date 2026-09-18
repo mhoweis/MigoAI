@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("SUPABASE_DATABASE_URL")
 }
 
 // Enums
@@ -69,9 +69,9 @@ model User {
   isAdmin                   Boolean             @default(false) @map("is_admin")
   
   // Preferences
-  interests                 Json?               @db.Json
-  preferences               Json?               @db.Json
-  settings                  Json?               @db.Json
+  interests                 Json?
+  preferences               Json?
+  settings                  Json?
   
   // Stats
   eventCount                Int?                @default(0) @map("event_count")
@@ -138,7 +138,7 @@ model Event {
   shortDescription          String?             @map("short_description") @db.VarChar(500)
   category                  String              @db.VarChar(100)
   subcategory               String?             @db.VarChar(100)
-  tags                      Json?               @db.Json // Changed from String[]
+  tags                      Json? // Changed from String[]
   
   // Dates
   startDate                 DateTime            @map("start_date")
@@ -169,11 +169,11 @@ model Event {
   ticketsAvailable          Int?                @default(0) @map("tickets_available")
   
   // Media
-  images                    Json?               @db.Json // Changed from String[]
+  images                    Json? // Changed from String[]
   coverImage                String?             @map("cover_image") @db.Text
   thumbnailImage            String?             @map("thumbnail_image") @db.Text
   videoUrl                  String?             @map("video_url") @db.Text
-  gallery                   Json?               @db.Json
+  gallery                   Json?
   
   // Features
   isPetFriendly             Boolean             @default(false) @map("is_pet_friendly")
@@ -182,7 +182,7 @@ model Event {
   hasFood                   Boolean             @default(false) @map("has_food")
   hasDrinks                 Boolean             @default(false) @map("has_drinks")
   hasWiFi                   Boolean             @default(false) @map("has_wifi")
-  facilities                Json?               @db.Json // Changed from String[]
+  facilities                Json? // Changed from String[]
   dressCode                 String?             @map("dress_code") @db.VarChar(100)
   ageRestriction            Int?                @map("age_restriction")
   ageGroup                  String?             @map("age_group") @db.VarChar(50)
@@ -208,7 +208,7 @@ model Event {
   supportEmail              String?             @map("support_email") @db.VarChar(255)
   supportPhone              String?             @map("support_phone") @db.VarChar(20)
   website                   String?             @db.Text
-  socialLinks               Json?               @map("social_links") @db.Json
+  socialLinks               Json?               @map("social_links")
   
   // Stats
   views                     Int?                @default(0)
@@ -295,7 +295,7 @@ model Review {
   id              String    @id @default(cuid())
   userId          String    @map("user_id")
   eventId         String    @map("event_id")
-  overallRating   Int       @default(5) @map("overall_rating") @db.TinyInt
+  overallRating   Int       @default(5) @map("overall_rating")
   title           String?   @db.VarChar(200)
   comment         String?   @db.Text
   isRecommended   Boolean   @default(true) @map("is_recommended")
@@ -359,7 +359,7 @@ model Passkey {
   counter       BigInt
   deviceType    String?   @db.VarChar(50)
   backedUp      Boolean  @default(false)
-  transports    Json?     @db.Json
+  transports    Json?
   
   // Relations
   user          User     @relation(fields: [userId], references: [id])
@@ -420,7 +420,7 @@ model SearchLog {
   userId          String?  @map("user_id")
   eventId         String?  @map("event_id")
   query           String   @db.VarChar(255)
-  filters         Json?    @db.Json
+  filters         Json?
   resultsCount    Int      @map("results_count")
   deviceType      String?  @map("device_type") @db.VarChar(50)
   userAgent       String?  @map("user_agent") @db.Text
@@ -452,7 +452,7 @@ model OrganizerProfile {
   vatNumber       String?   @map("vat_number") @db.VarChar(50)
   
   // Social
-  socialLinks     Json?     @map("social_links") @db.Json
+  socialLinks     Json?     @map("social_links")
   
   // Stats
   totalEvents     Int       @default(0) @map("total_events")
@@ -466,7 +466,7 @@ model OrganizerProfile {
   
   // Bank/Stripe info
   stripeAccountId String?   @map("stripe_account_id") @db.VarChar(255)
-  bankAccount     Json?     @map("bank_account") @db.Json
+  bankAccount     Json?     @map("bank_account")
   
   // Timestamps
   createdAt       DateTime  @default(now()) @map("created_at")
@@ -532,7 +532,7 @@ model Notification {
   type            String    @db.VarChar(50)
   title           String    @db.VarChar(255)
   message         String    @db.Text
-  data            Json?     @db.Json
+  data            Json?
   isRead          Boolean   @default(false) @map("is_read")
   isSent          Boolean   @default(false) @map("is_sent")
   sendAt          DateTime? @map("send_at")
@@ -593,7 +593,7 @@ model ChatSession {
   userId          String        @map("user_id")
   user            User          @relation(fields: [userId], references: [id])
   title           String?       @db.VarChar(255)
-  context         Json?         @db.Json
+  context         Json?
   messageCount    Int           @default(0) @map("message_count")
   tokenCount      Int           @default(0) @map("token_count")
   durationMinutes Int           @default(0) @map("duration_minutes")
@@ -623,8 +623,8 @@ model ChatMessage {
   tokens          Int?          @default(0)
   aiModel         String?       @map("ai_model") @db.VarChar(100)
   aiResponseTime  Int?          @map("ai_response_time")
-  aiUsage         Json?         @map("ai_usage") @db.Json
-  context         Json?         @db.Json
+  aiUsage         Json?         @map("ai_usage")
+  context         Json?
   createdAt       DateTime      @default(now()) @map("created_at")
   
   @@map("chat_messages")

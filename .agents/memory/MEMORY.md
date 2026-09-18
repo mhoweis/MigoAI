@@ -1,0 +1,5 @@
+- [Workspace lockfile security updates](workspace-lockfile-security.md) — stale nested workspace entries may need removal before safe npm overrides can resolve.
+- [Supabase preview secret wiring](supabase-preview-secrets.md) — Prisma must read the Supabase URI directly from its dedicated secret; shell remapping through reserved DATABASE_URL is unreliable.
+- [Embedded preview API routing](embedded-preview-api-routing.md) — use same-origin web API proxying; forwarded secondary ports can fail in embedded Replit browsers.
+- [Metro watch roots on Replit](metro-watch-roots.md) — watch stable dependency/shared roots, not the whole workspace where temporary platform directories rotate.
+- [Twilio connector identifiers](twilio-connector-identifiers.md) — restricted connector keys may send SMS but cannot discover the account SID or sender number.

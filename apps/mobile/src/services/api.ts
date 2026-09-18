@@ -4,10 +4,22 @@ import { Platform, Alert } from 'react-native';
 import Constants from 'expo-constants'; // Optional: if using Expo
 
 // Get the machine's IP address for physical device testing
-let MACHINE_IP = '192.168.12.33'; 
+let MACHINE_IP = '192.168.12.33';
+
+const configuredApiBaseUrl = process.env.EXPO_PUBLIC_API_URL?.replace(/\/+$/, '');
 
 // Platform-specific base URL configuration
 const getApiBaseUrl = (): string => {
+  // Expo web proxies /api to the backend so browser requests stay same-origin.
+  if (Platform.OS === 'web') {
+    return '';
+  }
+
+  // Replit and other hosted previews inject the API URL at build time.
+  if (configuredApiBaseUrl) {
+    return configuredApiBaseUrl;
+  }
+
   // Production URL (when app is deployed)
   if (process.env.NODE_ENV === 'production') {
     return 'https://api.migoapp.com'; // Your production API URL
@@ -19,13 +31,13 @@ const getApiBaseUrl = (): string => {
     if (Platform.OS === 'ios') {
       // Check if running in iOS Simulator (you can use Platform.isTV or other checks)
       // For simplicity, we'll assume localhost works for iOS simulator
-      return 'http://localhost:5000';
+      return 'http://localhost:5001';
     }
     
     // For Android Emulator
     if (Platform.OS === 'android') {
       // Standard Android emulator uses 10.0.2.2
-      return 'http://10.0.2.2:5000';
+      return 'http://10.0.2.2:5001';
     }
     
     // For physical devices (Android/iOS) - use machine IP
@@ -34,7 +46,7 @@ const getApiBaseUrl = (): string => {
   }
   
   // Fallback
-  return 'http://localhost:5000';
+  return 'http://localhost:5001';
 };
 
 // Test function to help developers find the right IP
@@ -70,7 +82,7 @@ export const detectAndSetMachineIP = async (): Promise<string> => {
 
 const API_BASE_URL = getApiBaseUrl();
 
-console.log(`[API Config] Platform: ${Platform.OS}, API Base URL: ${API_BASE_URL}`);
+console.log(`[API Config] Platform: ${Platform.OS}, API Base URL: ${API_BASE_URL || '(same origin)'}`);
 
 export const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,

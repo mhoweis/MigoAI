@@ -3,9 +3,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface User {
   id: string;
-  email: string;
+  email: string | null;
   name: string;
-  phone?: string;
+  phone?: string | null;
   avatar?: string;
   role: string;
   interests: string[];
@@ -31,7 +31,7 @@ export interface AuthResponse {
 }
 
 export interface LoginCredentials {
-  email: string;
+  identifier: string;
   password: string;
 }
 
@@ -39,7 +39,6 @@ export interface RegisterData {
   email: string;
   password: string;
   name?: string;
-  phone?: string;
 }
 
 export interface ApiResponse<T> {
@@ -49,6 +48,42 @@ export interface ApiResponse<T> {
 }
 
 export const authService = {
+  async sendPhoneSignupOtp(data: { phone: string; name?: string }): Promise<void> {
+    try {
+      await api.post('/auth/phone-signup/send-otp', data);
+    } catch (error: any) {
+      throw new Error(
+        error.response?.data?.error || error.message || 'Failed to send verification code'
+      );
+    }
+  },
+
+  async verifyPhoneSignupOtp(data: {
+    phone: string;
+    code: string;
+    name?: string;
+  }): Promise<AuthResponse> {
+    try {
+      const response = await api.post<ApiResponse<AuthResponse>>(
+        '/auth/phone-signup/verify-otp',
+        data
+      );
+      const { user, tokens, isFirstLogin } = response.data.data;
+
+      await AsyncStorage.setItem('accessToken', tokens.accessToken);
+      await AsyncStorage.setItem('refreshToken', tokens.refreshToken);
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+      await AsyncStorage.setItem('firstLogin', JSON.stringify(isFirstLogin));
+      api.defaults.headers.common.Authorization = `Bearer ${tokens.accessToken}`;
+
+      return response.data.data;
+    } catch (error: any) {
+      throw new Error(
+        error.response?.data?.error || error.message || 'Verification failed'
+      );
+    }
+  },
+
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
       const response = await api.post<ApiResponse<AuthResponse>>('/auth/login', credentials);

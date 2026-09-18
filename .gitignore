@@ -1,0 +1,14 @@
+node_modules/
+.cache/
+.config/
+.upm/
+
+.expo/
+dist/
+*.tsbuildinfo
+
+.env
+.env.*
+!.env.example
+
+screenshots/

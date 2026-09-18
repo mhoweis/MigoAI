@@ -2,8 +2,60 @@
 import { Router, Request, Response } from 'express';
 import { authService } from '../services/auth.service';
 import { authenticate } from '../middlewares/auth.middleware';
+import { rateLimit } from 'express-rate-limit';
 
 const router = Router();
+const sendOtpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many verification codes requested. Please try again later.' },
+});
+const verifyOtpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many verification attempts. Please try again later.' },
+});
+
+router.post('/phone-signup/send-otp', sendOtpLimiter, async (req: Request, res: Response) => {
+  try {
+    const { phone, name } = req.body;
+    if (!phone) {
+      res.status(400).json({ error: 'Phone number is required' });
+      return;
+    }
+
+    await authService.sendPhoneSignupOtp(phone, name);
+    res.json({ success: true, data: { expiresIn: 600 } });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.post('/phone-signup/verify-otp', verifyOtpLimiter, async (req: Request, res: Response) => {
+  try {
+    const { phone, code, name } = req.body;
+    if (!phone || !code) {
+      res.status(400).json({ error: 'Phone number and verification code are required' });
+      return;
+    }
+
+    const result = await authService.verifyPhoneSignupOtp(phone, code, name);
+    res.status(201).json({
+      success: true,
+      data: {
+        user: result.user,
+        tokens: result.tokens,
+        isFirstLogin: true,
+      },
+    });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
 
 // Register
 router.post('/register', async (req: Request, res: Response) => {
@@ -15,7 +67,7 @@ router.post('/register', async (req: Request, res: Response) => {
       return;
     }
     
-    const result = await authService.registerWithEmail(email, password, name, phone);
+    const result = await authService.registerWithEmail(email, password, name);
     
     res.status(201).json({
       success: true,
@@ -33,14 +85,15 @@ router.post('/register', async (req: Request, res: Response) => {
 // Login
 router.post('/login', async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { identifier, email, phone, password } = req.body;
+    const loginIdentifier = identifier || email || phone;
     
-    if (!email || !password) {
-      res.status(400).json({ error: 'Email and password are required' });
+    if (!loginIdentifier || !password) {
+      res.status(400).json({ error: 'Email or phone number and password are required' });
       return;
     }
     
-    const result = await authService.loginWithEmail(email, password);
+    const result = await authService.loginWithIdentifier(loginIdentifier, password);
     
     // Check if user has interests
     const hasInterests = result.user.interests && Array.isArray(result.user.interests) && result.user.interests.length > 0;

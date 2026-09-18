@@ -216,7 +216,10 @@ export default function App() {
           setFirstLogin(!hasInterests);
           
         } catch (error) {
-          console.log('❌ Token validation failed:', error.message);
+          console.log(
+            '❌ Token validation failed:',
+            error instanceof Error ? error.message : String(error)
+          );
           // Clear invalid tokens
           await authService.logout();
           setUser(null);
@@ -255,18 +258,18 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <Stack.Navigator>
+        <Stack.Navigator initialRouteName={!user ? "Register" : undefined}>
           {!user ? (
             // Auth Screens
             <>
               <Stack.Screen
-                name="Login"
-                component={LoginScreen}
+                name="Register"
+                component={RegisterScreen}
                 options={{ headerShown: false }}
               />
               <Stack.Screen
-                name="Register"
-                component={RegisterScreen}
+                name="Login"
+                component={LoginScreen}
                 options={{ headerShown: false }}
               />
 

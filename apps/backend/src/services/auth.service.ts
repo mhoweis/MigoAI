@@ -4,6 +4,8 @@ import bcrypt from 'bcryptjs';
 import config from '../config/env';
 import prisma from '../config/database';
 import { User, UserRole } from '@prisma/client';
+import crypto from 'crypto';
+import { smsService } from './sms.service';
 
 export interface JwtPayload {
   userId: string;
@@ -25,24 +27,124 @@ export interface AuthResponse {
 export class AuthService {
   private jwtSecret = config.JWT_SECRET;
   private jwtRefreshSecret = config.JWT_REFRESH_SECRET || config.JWT_SECRET;
+
+  private normalizePhone(phone: string): string {
+    const normalized = phone.trim().replace(/[^\d+]/g, '');
+    if (!/^\+[1-9]\d{6,14}$/.test(normalized)) {
+      throw new Error('Enter a valid phone number with country code, such as +971501234567');
+    }
+    return normalized;
+  }
+
+  private hashOtp(phone: string, code: string): string {
+    return crypto
+      .createHmac('sha256', this.jwtSecret)
+      .update(`${phone}:${code}`)
+      .digest('hex')
+      .slice(0, 10);
+  }
+
+  async sendPhoneSignupOtp(phone: string, name?: string): Promise<void> {
+    const normalizedPhone = this.normalizePhone(phone);
+    const existingUser = await prisma.user.findUnique({ where: { phone: normalizedPhone } });
+
+    if (existingUser?.phoneVerified) {
+      throw new Error('Phone number already registered');
+    }
+
+    const code = crypto.randomInt(100000, 1000000).toString();
+    const verificationData = {
+      name: name?.trim() || existingUser?.name || normalizedPhone,
+      phoneVerificationCode: this.hashOtp(normalizedPhone, code),
+      phoneVerificationExpires: new Date(Date.now() + 10 * 60 * 1000),
+      authMethod: 'phone_otp',
+    };
+
+    if (existingUser) {
+      await prisma.user.update({
+        where: { id: existingUser.id },
+        data: verificationData,
+      });
+    } else {
+      await prisma.user.create({
+        data: {
+          phone: normalizedPhone,
+          role: UserRole.USER,
+          ...verificationData,
+        },
+      });
+    }
+
+    try {
+      await smsService.sendVerificationCode(normalizedPhone, code);
+    } catch (error) {
+      await prisma.user.update({
+        where: { phone: normalizedPhone },
+        data: {
+          phoneVerificationCode: null,
+          phoneVerificationExpires: null,
+        },
+      });
+      throw error;
+    }
+  }
+
+  async verifyPhoneSignupOtp(phone: string, code: string, name?: string): Promise<AuthResponse> {
+    const normalizedPhone = this.normalizePhone(phone);
+    const user = await prisma.user.findUnique({ where: { phone: normalizedPhone } });
+    const suppliedHash = this.hashOtp(normalizedPhone, code.trim());
+
+    if (
+      !user
+      || !user.phoneVerificationCode
+      || !user.phoneVerificationExpires
+      || user.phoneVerificationExpires.getTime() < Date.now()
+      || !crypto.timingSafeEqual(
+        Buffer.from(user.phoneVerificationCode),
+        Buffer.from(suppliedHash)
+      )
+    ) {
+      throw new Error('Invalid or expired verification code');
+    }
+
+    const verifiedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        name: name?.trim() || user.name,
+        phoneVerified: true,
+        isVerified: true,
+        phoneVerificationCode: null,
+        phoneVerificationExpires: null,
+        lastLoginAt: new Date(),
+      },
+    });
+
+    return {
+      user: this.sanitizeUser(verifiedUser),
+      tokens: await this.generateTokens(verifiedUser),
+    };
+  }
   
-  // Register with email
-  async registerWithEmail(email: string, password: string, name?: string, phone?: string): Promise<AuthResponse> {
+  // Register with at least one login identifier: email address or phone number.
+  async registerWithEmail(email: string | undefined, password: string, name?: string, phone?: string): Promise<AuthResponse> {
+    const normalizedEmail = email?.trim().toLowerCase() || undefined;
+    const normalizedPhone = phone ? this.normalizePhone(phone) : undefined;
+
     // Check if user already exists
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [
-          { email },
-          ...(phone ? [{ phone }] : [])
+          ...(normalizedEmail ? [{ email: normalizedEmail }] : []),
+          ...(normalizedPhone ? [{ phone: normalizedPhone }] : [])
         ]
       }
     });
     
     if (existingUser) {
-      if (existingUser.email === email) {
+      if (existingUser.email === normalizedEmail) {
         throw new Error('Email already registered');
       }
-      if (phone && existingUser.phone === phone) {
+      if (normalizedPhone && existingUser.phone === normalizedPhone) {
         throw new Error('Phone number already registered');
       }
     }
@@ -53,10 +155,10 @@ export class AuthService {
     // Create user
     const user = await prisma.user.create({
       data: {
-        email,
+        email: normalizedEmail || null,
         password: hashedPassword,
-        name: name || email.split('@')[0],
-        phone: phone || null,
+        name: name || normalizedEmail?.split('@')[0] || normalizedPhone,
+        phone: normalizedPhone || null,
         role: UserRole.USER,
       }
     });
@@ -70,10 +172,19 @@ export class AuthService {
     };
   }
   
-  // Login with email
-  async loginWithEmail(email: string, password: string): Promise<AuthResponse> {
-    const user = await prisma.user.findUnique({
-      where: { email },
+  // Login with either email address or phone number.
+  async loginWithIdentifier(identifier: string, password: string): Promise<AuthResponse> {
+    const value = identifier.trim();
+    const normalizedEmail = value.toLowerCase();
+    const normalizedPhone = value.includes('@') ? undefined : this.normalizePhone(value);
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: normalizedEmail },
+          { phone: value },
+          ...(normalizedPhone && normalizedPhone !== value ? [{ phone: normalizedPhone }] : []),
+        ],
+      },
     });
     
     if (!user || !user.password) {
@@ -99,6 +210,10 @@ export class AuthService {
       user: this.sanitizeUser(updatedUser),
       tokens,
     };
+  }
+
+  async loginWithEmail(email: string, password: string): Promise<AuthResponse> {
+    return this.loginWithIdentifier(email, password);
   }
   
   // Generate tokens
@@ -202,7 +317,12 @@ export class AuthService {
   
   // Helper methods
   private sanitizeUser(user: User): any {
-    const { password, ...safeUser } = user;
+    const {
+      password,
+      phoneVerificationCode,
+      phoneVerificationExpires,
+      ...safeUser
+    } = user;
     return safeUser;
   }
   

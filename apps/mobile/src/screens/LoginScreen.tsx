@@ -22,34 +22,32 @@ interface Props {
 }
 
 const LoginScreen: React.FC<Props> = ({ navigation }) => {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { setUser, setFirstLogin } = useUserStore();
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password');
+    if (!identifier.trim() || !password) {
+      const message = 'Please enter your email or phone number and password';
+      setErrorMessage(message);
+      Alert.alert('Error', message);
       return;
     }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
-    }
-
+    setErrorMessage(null);
     setLoading(true);
     
     try {
-      console.log('Attempting login with:', email);
-      
       // Use real auth service
-      const response = await authService.login({ email, password });
+      const response = await authService.login({
+        identifier: identifier.trim(),
+        password,
+      });
       
-      console.log('Login successful:', response.user.email);
+      console.log('Login successful');
       
       // Update user store with response
       setUser(response.user);
@@ -70,6 +68,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         errorMessage = 'Cannot connect to server. Please check your connection.';
       }
       
+      setErrorMessage(errorMessage);
       Alert.alert('Login Failed', errorMessage);
       
     } finally {
@@ -125,14 +124,15 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               {/*<Icon name="mail-outline" size={20} color="#9ca3af" style={styles.inputIcon} />*/}
               <TextInput
                 style={styles.input}
-                placeholder="Email address"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
+                placeholder="Email address or phone number"
+                value={identifier}
+                onChangeText={(value) => {
+                  setIdentifier(value);
+                  setErrorMessage(null);
+                }}
+                keyboardType="default"
                 autoCapitalize="none"
                 autoCorrect={false}
-                autoComplete="email"
-                textContentType="emailAddress"
                 returnKeyType="next"
                 editable={!loading}
               />
@@ -170,6 +170,12 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
                 />*/}
               </TouchableOpacity>
             </View>
+
+            {errorMessage && (
+              <Text accessibilityRole="alert" style={styles.errorMessage}>
+                {errorMessage}
+              </Text>
+            )}
 
             <TouchableOpacity 
               style={styles.forgotPassword}
@@ -318,6 +324,11 @@ const styles = StyleSheet.create({
     color: '#3b82f6',
     fontSize: 14,
     fontWeight: '600',
+  },
+  errorMessage: {
+    color: '#dc2626',
+    fontSize: 14,
+    marginBottom: 16,
   },
   loginButton: {
     backgroundColor: '#3b82f6',

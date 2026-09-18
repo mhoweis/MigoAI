@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { Marker } from 'react-native-maps';
+import EventMap from '../components/EventMap';
 import { api } from '../services/api';
 import { Event } from '@migo/shared';
 import { useUserStore } from '../store/userStore';
@@ -256,24 +256,12 @@ const EventDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {event.latitude && event.longitude && (
             <View style={styles.mapSection}>
               <Text style={styles.sectionTitle}>Location on Map</Text>
-              <MapView
-                style={styles.map}
-                initialRegion={{
-                  latitude: event.latitude,
-                  longitude: event.longitude,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
-                }}
-              >
-                <Marker
-                  coordinate={{
-                    latitude: event.latitude,
-                    longitude: event.longitude,
-                  }}
-                  title={event.venueName || event.title}
-                  description={event.address}
-                />
-              </MapView>
+              <EventMap
+                latitude={event.latitude}
+                longitude={event.longitude}
+                title={event.venueName || event.title}
+                description={event.address}
+              />
             </View>
           )}
 

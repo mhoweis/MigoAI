@@ -6,7 +6,7 @@ const envSchema = z.object({
   // Required
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.string().default('5000'),
-  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  SUPABASE_DATABASE_URL: z.string().min(1, 'SUPABASE_DATABASE_URL is required'),
   JWT_SECRET: z.string().min(1, 'JWT_SECRET is required'),
   JWT_REFRESH_SECRET: z.string().min(1, 'JWT_REFRESH_SECRET is required'),
   
@@ -67,7 +67,7 @@ export default {
   CLIENT_URL: env.CLIENT_URL,
   
   // Database
-  DATABASE_URL: env.DATABASE_URL,
+  DATABASE_URL: env.SUPABASE_DATABASE_URL,
   
   // Authentication
   JWT_SECRET: env.JWT_SECRET,

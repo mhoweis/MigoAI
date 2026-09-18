@@ -28,9 +28,15 @@ import prisma from './config/database';
 
 // Initialize express app
 const app = express();
+// Replit terminates HTTPS at one proxy before forwarding requests to Express.
+// Trust only that first hop so rate limiting uses the real client IP.
+app.set('trust proxy', 1);
 
-// Security middleware
-app.use(helmet());
+// The web client is served from a separate Replit port, so API responses must
+// be readable cross-origin after the CORS middleware approves the request.
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 
 // CORS configuration for React Native mobile apps
 const corsOptions = {
@@ -57,7 +63,8 @@ const corsOptions = {
     ].filter(Boolean); // Remove undefined values
 
     // Check if the origin is in allowed list or if we're in development
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+    const isDevelopment = (process.env.NODE_ENV || 'development') === 'development';
+    if (allowedOrigins.indexOf(origin) !== -1 || isDevelopment) {
       callback(null, true);
     } else {
       console.warn(`CORS blocked request from origin: ${origin}`);
